@@ -1,7 +1,10 @@
 package com.example.todolist;
 
+import android.app.AlarmManager;
 import android.app.DatePickerDialog;
+import android.app.PendingIntent;
 import android.app.TimePickerDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
@@ -28,7 +31,7 @@ public class AddTaskActivity extends AppCompatActivity {
     private Button btnSelectImage, btnSaveTask;
 
     private Uri selectedImageUri = null;
-    private String reminderDateTime = null;
+    private long reminderTimeInMillis = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,13 +46,13 @@ public class AddTaskActivity extends AppCompatActivity {
         btnSelectImage = findViewById(R.id.btnSelectImage);
         btnSaveTask = findViewById(R.id.btnSaveTask);
 
-        // Back navigation
+        // Enable back navigation
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
         // Set image selection button
         btnSelectImage.setOnClickListener(v -> openImageSelector());
 
-        // Set reminder selection
+        // Set reminder date and time selection
         tvReminderDateTime.setOnClickListener(v -> openDateTimePicker());
 
         // Set save button
@@ -66,8 +69,11 @@ public class AddTaskActivity extends AppCompatActivity {
         DatePickerDialog datePickerDialog = new DatePickerDialog(this,
                 (view, year, month, dayOfMonth) -> {
                     TimePickerDialog timePickerDialog = new TimePickerDialog(this,
-                            (view1, hourOfDay, minute) -> {
-                                reminderDateTime = dayOfMonth + "/" + (month + 1) + "/" + year + " " + hourOfDay + ":" + minute;
+                            (timeView, hourOfDay, minute) -> {
+                                Calendar reminderCalendar = Calendar.getInstance();
+                                reminderCalendar.set(year, month, dayOfMonth, hourOfDay, minute, 0);
+                                reminderTimeInMillis = reminderCalendar.getTimeInMillis();
+                                String reminderDateTime = dayOfMonth + "/" + (month + 1) + "/" + year + " " + hourOfDay + ":" + minute;
                                 tvReminderDateTime.setText(reminderDateTime);
                             },
                             calendar.get(Calendar.HOUR_OF_DAY),
@@ -96,33 +102,48 @@ public class AddTaskActivity extends AppCompatActivity {
     }
 
     private void saveTask() {
-        String name = etTaskName.getText().toString();
-        String description = etTaskDescription.getText().toString();
+        String name = etTaskName.getText().toString().trim();
+        String description = etTaskDescription.getText().toString().trim();
 
-        if (name.isEmpty() || description.isEmpty() || reminderDateTime == null) {
-            Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show();
+        if (name.isEmpty() || description.isEmpty() || reminderTimeInMillis == 0) {
+            Toast.makeText(this, "Please fill all fields and set a reminder", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // Generate a unique ID for the task (use SQLite in a real app)
-//        int taskId = (int) (System.currentTimeMillis() / 1000);
+        // Save task to database
         TodoDatabaseHelper dbHelper = new TodoDatabaseHelper(this);
-
         long taskId = dbHelper.insertTask(
-                etTaskName.getText().toString(),
-                etTaskDescription.getText().toString(),
+                name,
+                description,
                 selectedImageUri != null ? selectedImageUri.toString() : null,
-                reminderDateTime
+                String.valueOf(reminderTimeInMillis) // Save reminder time as a string
         );
 
         if (taskId != -1) {
             Toast.makeText(this, "Task Added Successfully!", Toast.LENGTH_SHORT).show();
+            scheduleNotification(reminderTimeInMillis, (int) taskId, name);
             finish(); // Close the activity
         } else {
             Toast.makeText(this, "Error Adding Task!", Toast.LENGTH_SHORT).show();
         }
-        // Go back to the previous screen
-        finish();
+    }
+
+    private void scheduleNotification(long timeInMillis, int taskId, String taskName) {
+        Intent intent = new Intent(this, NotificationReceiver.class);
+        intent.putExtra("task_id", taskId);
+        intent.putExtra("task_name", taskName);
+
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                this,
+                taskId,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT
+        );
+
+        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        if (alarmManager != null) {
+            alarmManager.setExact(AlarmManager.RTC_WAKEUP, timeInMillis, pendingIntent);
+        }
     }
 
     @Override

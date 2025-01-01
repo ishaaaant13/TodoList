@@ -3,21 +3,13 @@ package com.example.todolist;
 import android.content.Intent;
 import android.database.Cursor;
 import android.os.Bundle;
-import android.view.View;
 import android.widget.Toast;
 
-import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.todolist.AddTaskActivity;
-import com.example.todolist.R;
-import com.example.todolist.TodoAdapter;
-import com.example.todolist.TodoDatabaseHelper;
-import com.example.todolist.TodoDetailActivity;
-import com.example.todolist.TodoItem;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.util.ArrayList;
@@ -34,31 +26,40 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        // Initialize UI components
         recyclerView = findViewById(R.id.recyclerView);
         FloatingActionButton fabAddTask = findViewById(R.id.fab);
 
         // Initialize database helper
         dbHelper = new TodoDatabaseHelper(this);
 
-        // Load tasks from the database
+        // Create notification channel
+        NotificationHelper.createNotificationChannel(this);
+
+        // Load tasks from database
         loadTasksFromDatabase();
 
         // Set up RecyclerView
         taskAdapter = new TodoAdapter(taskList, this::onTaskClick);
-
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         recyclerView.setAdapter(taskAdapter);
 
-        // Floating Action Button to add a new task
+        // Floating Action Button for adding new tasks
         fabAddTask.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, AddTaskActivity.class);
-            startActivityForResult(intent, 1); // Request code 1 for adding tasks
+            startActivityForResult(intent, 1);
         });
     }
 
-    // Load tasks from the database
+    @Override
+    protected void onResume() {
+        super.onResume();
+        loadTasksFromDatabase();
+        taskAdapter.notifyDataSetChanged();
+    }
+
     private void loadTasksFromDatabase() {
-        taskList.clear(); // Clear the list before loading new data
+        taskList.clear();
         Cursor cursor = dbHelper.getAllTasks();
 
         if (cursor != null && cursor.moveToFirst()) {
@@ -76,7 +77,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    // Handle task click
     private void onTaskClick(TodoItem task) {
         Intent intent = new Intent(MainActivity.this, TodoDetailActivity.class);
         intent.putExtra("task_id", task.getId());
@@ -84,20 +84,16 @@ public class MainActivity extends AppCompatActivity {
         intent.putExtra("task_description", task.getDescription());
         intent.putExtra("task_image", task.getImageUri());
         intent.putExtra("task_reminder", task.getDateTime());
-        startActivityForResult(intent, 2); // Request code 2 for task detail
+        startActivityForResult(intent, 2);
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-
-        if (resultCode == RESULT_OK) {
-            if (requestCode == 1 || requestCode == 2) {
-                // Reload tasks after adding/updating/deleting
-                loadTasksFromDatabase();
-                taskAdapter.notifyDataSetChanged();
-                Toast.makeText(this, "Tasks Updated", Toast.LENGTH_SHORT).show();
-            }
+        if (resultCode == RESULT_OK && (requestCode == 1 || requestCode == 2)) {
+            loadTasksFromDatabase();
+            taskAdapter.notifyDataSetChanged();
+            Toast.makeText(this, "Tasks Updated", Toast.LENGTH_SHORT).show();
         }
     }
 }

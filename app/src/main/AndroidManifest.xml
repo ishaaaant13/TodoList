@@ -2,8 +2,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Permissions -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-
+    <uses-permission android:name="android.permission.ACCESS_MEDIA_LOCATION" />
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:allowBackup="true"
@@ -16,23 +20,23 @@
         android:theme="@style/Theme.TodoList"
         tools:targetApi="31">
 
+        <!-- Main Activity -->
         <activity
             android:name=".MainActivity"
             android:label="@string/app_name"
-            android:exported="true"> <!-- Make sure it's 'true' to allow launch -->
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
-        <activity
-            android:name=".TodoDetailActivity"
-            android:exported="false" />
+        <!-- Other Activities -->
+        <activity android:name=".AddTaskActivity" android:exported="false" />
+        <activity android:name=".TodoDetailActivity" android:exported="false" />
+        <receiver android:name=".NotificationReceiver" />
 
-        <activity
-            android:name=".AddTaskActivity"
-            android:exported="false" />
+
     </application>
 
 </manifest>
