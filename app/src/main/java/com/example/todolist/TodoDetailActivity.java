@@ -34,10 +34,10 @@ public class TodoDetailActivity extends AppCompatActivity {
         btnModifyTask = findViewById(R.id.btnModifyTask);
         btnDeleteTask = findViewById(R.id.btnDeleteTask);
 
-        // Initialize database helper
+        // Initialize DB helper
         dbHelper = new TodoDatabaseHelper(this);
 
-        // Get task details from intent
+        // Get task details from Intent
         Intent intent = getIntent();
         taskId = intent.getIntExtra("task_id", -1);
         String taskName = intent.getStringExtra("task_name");
@@ -45,19 +45,24 @@ public class TodoDetailActivity extends AppCompatActivity {
         String taskImage = intent.getStringExtra("task_image");
         String taskReminder = intent.getStringExtra("task_reminder");
 
-        // Populate the UI with task details
+        // Populate UI
         tvTaskName.setText(taskName);
         tvTaskDescription.setText(taskDescription);
         tvTaskReminder.setText(taskReminder);
 
+        // Use Glide to load image
         if (taskImage != null && !taskImage.isEmpty()) {
-            Glide.with(this).load(taskImage).into(ivTaskImage);
+            Glide.with(this)
+                    .load(taskImage)
+                    .placeholder(R.drawable.placeholder_image)  // optional placeholder
+                    .into(ivTaskImage);
         } else {
             ivTaskImage.setImageResource(R.drawable.placeholder_image);
         }
 
-        // Modify task button listener
+        // Modify button
         btnModifyTask.setOnClickListener(v -> {
+            // Currently, you pass all these extras but we also need the "task_id" to update, not insert
             Intent modifyIntent = new Intent(TodoDetailActivity.this, AddTaskActivity.class);
             modifyIntent.putExtra("task_id", taskId);
             modifyIntent.putExtra("task_name", taskName);
@@ -65,14 +70,20 @@ public class TodoDetailActivity extends AppCompatActivity {
             modifyIntent.putExtra("task_image", taskImage);
             modifyIntent.putExtra("task_reminder", taskReminder);
             startActivity(modifyIntent);
+
+            // You might want to do startActivityForResult(...) if you want a callback
+            // or just finish() here, depending on your flow:
             finish();
         });
 
-        // Delete task button listener
+
+        // Delete button
         btnDeleteTask.setOnClickListener(v -> showDeleteConfirmationDialog());
     }
 
-    // Show confirmation dialog before deleting the task
+    /**
+     * Confirmation dialog to delete a task
+     */
     private void showDeleteConfirmationDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Delete Task");
@@ -87,12 +98,14 @@ public class TodoDetailActivity extends AppCompatActivity {
         builder.show();
     }
 
-    // Delete task from the database
+    /**
+     * Actually delete the task from DB
+     */
     private void deleteTask() {
         int isDeleted = dbHelper.deleteTask(taskId);
         if (isDeleted == 1) {
             Toast.makeText(this, "Task deleted successfully", Toast.LENGTH_SHORT).show();
-            finish(); // Go back to the previous screen
+            finish(); // go back to previous screen
         } else {
             Toast.makeText(this, "Failed to delete task", Toast.LENGTH_SHORT).show();
         }
